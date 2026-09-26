@@ -1,0 +1,62 @@
+name: LeadVise Google Maps Scraper
+on:
+  workflow_dispatch:
+    inputs:
+      max_urls:
+        description: Maximum grid URLs to process
+        required: false
+        default: "20"
+  schedule:
+    - cron: "30 20 * * *"
+concurrency:
+  group: leadvise-scraper
+  cancel-in-progress: false
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Claim URLs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MAX_URLS: ${{ inputs.max_urls || '20' }}
+        run: python scripts/claim_urls.py
+      - name: Check queue
+        id: queue
+        run: echo "has_batch=$(python -c 'import json; print(bool(json.load(open("claimed.json")).get("batch_id")))')" >> "$GITHUB_OUTPUT"
+      - name: Run gosom
+        if: steps.queue.outputs.has_batch == 'True'
+        run: |
+          mkdir -p out
+          docker pull gosom/google-maps-scraper:latest
+          docker run --rm -v "$PWD/queries.txt:/queries.txt:ro" -v "$PWD/out:/out" gosom/google-maps-scraper:latest -input /queries.txt -results /out/results.json -json -depth 1 -c 2 -exit-on-inactivity 3m
+          cp out/results.json results.json
+      - name: Ingest
+        if: steps.queue.outputs.has_batch == 'True'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/ingest.py
+      - name: Finalize
+        if: success() && steps.queue.outputs.has_batch == 'True'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/finalize.py
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-run
+          path: |
+            results.json
+            ingest_stats.json
+            claimed.json
+          retention-days: 7
+          if-no-files-found: ignore
