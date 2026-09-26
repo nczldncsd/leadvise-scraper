@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+results.json
+ingest_stats.json
+claimed.json
+queries.txt
