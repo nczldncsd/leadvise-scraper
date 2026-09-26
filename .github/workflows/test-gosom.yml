@@ -1,0 +1,71 @@
+name: Test Gosom
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gosom-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Prepare test
+        run: |
+          mkdir -p out
+          printf '%s\n' 'https://www.google.com/maps/search/Appliance%20Repair/@29.591125,-95.194882,13.5z?hl=en&gl=us' > queries.txt
+
+      - name: Run Gosom
+        run: |
+          START=$(date +%s)
+          echo "=== GOSOM TEST START ==="
+          date -u
+          echo "URL count: 1"
+          echo "Depth: 1"
+          echo "Concurrency: 2"
+
+          docker pull gosom/google-maps-scraper:latest
+
+          set +e
+          docker run --rm             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/results.json             -json             -depth 1             -c 2             -exit-on-inactivity 3m
+          CODE=$?
+          set -e
+
+          END=$(date +%s)
+          ELAPSED=$((END-START))
+
+          echo "=== GOSOM TEST FINISHED ==="
+          echo "Exit code: $CODE"
+          echo "Runtime seconds: $ELAPSED"
+          echo "Runtime minutes: $((ELAPSED/60))"
+
+          if [ -f out/results.json ]; then
+            echo "results.json: FOUND"
+            echo "Output lines: $(wc -l < out/results.json)"
+            echo "Output bytes: $(wc -c < out/results.json)"
+          else
+            echo "results.json: NOT FOUND"
+          fi
+
+          exit $CODE
+
+      - name: Inspect result
+        if: always()
+        run: |
+          echo "=== RESULT FILE ==="
+          if [ -f out/results.json ]; then
+            echo "Lines: $(wc -l < out/results.json)"
+            echo "Bytes: $(wc -c < out/results.json)"
+            echo "--- First 3 lines ---"
+            head -n 3 out/results.json
+          else
+            echo "No results.json"
+          fi
+
+      - name: Upload Gosom result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosom-isolated-test
+          path: out/results.json
+          retention-days: 7
+          if-no-files-found: ignore
