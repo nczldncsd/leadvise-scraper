@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  gosom-test:
+  gosom-depth-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Prepare test
@@ -14,58 +14,161 @@ jobs:
           mkdir -p out
           printf '%s\n' 'https://www.google.com/maps/search/Appliance%20Repair/@29.591125,-95.194882,13.5z?hl=en&gl=us' > queries.txt
 
-      - name: Run Gosom
+      - name: Run depth 1
         run: |
           START=$(date +%s)
-          echo "=== GOSOM TEST START ==="
-          date -u
-          echo "URL count: 1"
-          echo "Depth: 1"
-          echo "Concurrency: 2"
-
+          echo "=== DEPTH 1 START ==="
           docker pull gosom/google-maps-scraper:latest
 
           set +e
-          docker run --rm             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/results.json             -json             -depth 1             -c 2             -exit-on-inactivity 3m
+          docker run --rm             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/depth1.json             -json             -depth 1             -c 2             -exit-on-inactivity 3m
           CODE=$?
           set -e
 
           END=$(date +%s)
           ELAPSED=$((END-START))
-
-          echo "=== GOSOM TEST FINISHED ==="
-          echo "Exit code: $CODE"
-          echo "Runtime seconds: $ELAPSED"
-          echo "Runtime minutes: $((ELAPSED/60))"
-
-          if [ -f out/results.json ]; then
-            echo "results.json: FOUND"
-            echo "Output lines: $(wc -l < out/results.json)"
-            echo "Output bytes: $(wc -c < out/results.json)"
+          echo "Depth 1 exit code: $CODE"
+          echo "Depth 1 runtime seconds: $ELAPSED"
+          if [ -f out/depth1.json ]; then
+            echo "Depth 1 lines: $(wc -l < out/depth1.json)"
+            echo "Depth 1 bytes: $(wc -c < out/depth1.json)"
           else
-            echo "results.json: NOT FOUND"
+            echo "Depth 1 result: NOT FOUND"
           fi
-
           exit $CODE
 
-      - name: Inspect result
+      - name: Run depth 5
+        run: |
+          START=$(date +%s)
+          echo "=== DEPTH 5 START ==="
+
+          set +e
+          docker run --rm             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/depth5.json             -json             -depth 5             -c 2             -exit-on-inactivity 3m
+          CODE=$?
+          set -e
+
+          END=$(date +%s)
+          ELAPSED=$((END-START))
+          echo "Depth 5 exit code: $CODE"
+          echo "Depth 5 runtime seconds: $ELAPSED"
+          if [ -f out/depth5.json ]; then
+            echo "Depth 5 lines: $(wc -l < out/depth5.json)"
+            echo "Depth 5 bytes: $(wc -c < out/depth5.json)"
+          else
+            echo "Depth 5 result: NOT FOUND"
+          fi
+          exit $CODE
+
+      - name: Run depth 10
+        run: |
+          START=$(date +%s)
+          echo "=== DEPTH 10 START ==="
+
+          set +e
+          docker run --rm             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/depth10.json             -json             -depth 10             -c 2             -exit-on-inactivity 3m
+          CODE=$?
+          set -e
+
+          END=$(date +%s)
+          ELAPSED=$((END-START))
+          echo "Depth 10 exit code: $CODE"
+          echo "Depth 10 runtime seconds: $ELAPSED"
+          if [ -f out/depth10.json ]; then
+            echo "Depth 10 lines: $(wc -l < out/depth10.json)"
+            echo "Depth 10 bytes: $(wc -c < out/depth10.json)"
+          else
+            echo "Depth 10 result: NOT FOUND"
+          fi
+          exit $CODE
+
+      - name: Compare results
         if: always()
         run: |
-          echo "=== RESULT FILE ==="
-          if [ -f out/results.json ]; then
-            echo "Lines: $(wc -l < out/results.json)"
-            echo "Bytes: $(wc -c < out/results.json)"
-            echo "--- First 3 lines ---"
-            head -n 3 out/results.json
-          else
-            echo "No results.json"
-          fi
+          echo "========================================"
+          echo "          GOSOM DEPTH COMPARISON"
+          echo "========================================"
 
-      - name: Upload Gosom result
+          python - <<'PY'
+          import json, os, re
+
+          files = ["depth1.json", "depth5.json", "depth10.json"]
+
+          def load_json_or_jsonl(path):
+              if not os.path.exists(path):
+                  return []
+              raw = open(path, encoding="utf-8").read().strip()
+              if not raw:
+                  return []
+              try:
+                  obj = json.loads(raw)
+                  return obj if isinstance(obj, list) else [obj]
+              except json.JSONDecodeError:
+                  out = []
+                  for line in raw.splitlines():
+                      try:
+                          out.append(json.loads(line))
+                      except Exception:
+                          pass
+                  return out
+
+          def place_id(x):
+              if not isinstance(x, dict):
+                  return None
+              for k in ("place_id", "placeId"):
+                  v = x.get(k)
+                  if isinstance(v, str) and re.match(r"^ChI[A-Za-z0-9_-]{10,}$", v):
+                      return v
+              return None
+
+          def name(x):
+              if not isinstance(x, dict):
+                  return None
+              return x.get("title") or x.get("name") or x.get("business_name")
+
+          results = {}
+          for f in files:
+              rows = load_json_or_jsonl("out/" + f)
+              ids = {place_id(x) for x in rows if place_id(x)}
+              names = [name(x) for x in rows if name(x)]
+              results[f] = (rows, ids, names)
+              print(f"{f}: records={len(rows)} real_place_ids={len(ids)}")
+
+          for f in files:
+              if results[f][1]:
+                  print(f"\n--- {f} sample ---")
+                  for x in list(results[f][2])[:5]:
+                      print(x)
+
+          a = results["depth1.json"][1]
+          b = results["depth5.json"][1]
+          c = results["depth10.json"][1]
+
+          print("\n=== COVERAGE DELTAS ===")
+          print("Depth 1 unique:", len(a))
+          print("Depth 5 unique:", len(b))
+          print("Depth 10 unique:", len(c))
+          print("5 minus 1:", len(b-a))
+          print("10 minus 5:", len(c-b))
+          print("10 minus 1:", len(c-a))
+          print("1 contained in 5:", a <= b)
+          print("5 contained in 10:", b <= c)
+
+          with open("out/comparison.txt", "w", encoding="utf-8") as f:
+              f.write(f"depth1={len(a)}\n")
+              f.write(f"depth5={len(b)}\n")
+              f.write(f"depth10={len(c)}\n")
+              f.write(f"depth5_minus_depth1={len(b-a)}\n")
+              f.write(f"depth10_minus_depth5={len(c-b)}\n")
+              f.write(f"depth10_minus_depth1={len(c-a)}\n")
+              f.write(f"depth1_contained_in_depth5={a <= b}\n")
+              f.write(f"depth5_contained_in_depth10={b <= c}\n")
+          PY
+
+      - name: Upload comparison
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gosom-isolated-test
-          path: out/results.json
+          name: gosom-depth-comparison
+          path: out/
           retention-days: 7
-          if-no-files-found: ignore
+          if-no-files-found: warn
