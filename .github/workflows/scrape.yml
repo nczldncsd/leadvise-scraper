@@ -44,10 +44,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/ingest.py
       - name: Finalize
-        if: success() && steps.queue.outputs.has_batch == 'True'
+        if: always() && steps.queue.outputs.has_batch == 'True'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_STATUS: ${{ job.status }}
+          FAILURE_REASON: "GitHub Actions job failed. Check the failed step logs."
         run: python scripts/finalize.py
       - name: Upload diagnostics
         if: always()
