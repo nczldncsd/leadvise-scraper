@@ -41,20 +41,34 @@ for x in items:
     if isinstance(website, str) and website.startswith("https://www.google.com/"):
         website = None
 
+    # Map gosom's schema to the payload expected by the Supabase RPC.
+    complete = x.get("complete_address") or {}
+    location = {
+        "lat": x.get("latitude"),
+        "lng": x.get("longitude") if x.get("longitude") is not None else x.get("longtitude"),
+    }
+
     valid.append({
         "placeId": pid,
-        "businessName": x.get("title") or x.get("name"),
-        "address": x.get("address") or x.get("complete_address"),
-        "phone": x.get("phone") or x.get("phone_number"),
+        "title": x.get("title") or x.get("name"),
+        "address": x.get("address"),
+        "city": complete.get("city") if isinstance(complete, dict) else None,
+        "state": complete.get("state") if isinstance(complete, dict) else None,
+        "countryCode": complete.get("country") if isinstance(complete, dict) else None,
+        "postalCode": complete.get("postal_code") if isinstance(complete, dict) else None,
+        "location": location,
         "website": website,
-        "rating": x.get("review_rating") or x.get("rating"),
-        "reviewCount": x.get("review_count") or x.get("reviews_count"),
-        "latitude": x.get("latitude"),
-        "longitude": x.get("longitude"),
-        "googleMapsUrl": x.get("link") or x.get("google_maps_url") or x.get("url"),
+        "phone": x.get("phone") or x.get("phone_number"),
+        "phoneUnformatted": x.get("phone_unformatted") or x.get("phone"),
+        "normalizedPhone": None,
+        "normalizedDomain": None,
+        "url": x.get("link") or x.get("google_maps_url") or x.get("url"),
+        "openingHoursFormatted": json.dumps(x.get("open_hours")) if x.get("open_hours") else None,
         "openingHoursRaw": x.get("open_hours") or x.get("hours"),
+        "totalScore": x.get("review_rating") if x.get("review_rating") is not None else x.get("rating"),
+        "reviewsCount": x.get("review_count") if x.get("review_count") is not None else x.get("reviews_count"),
         "categories": x.get("categories") or ([x["category"]] if x.get("category") else []),
-        "emails": x.get("emails") or [],
+        "rank": x.get("rank"),
         "raw": x
     })
 
