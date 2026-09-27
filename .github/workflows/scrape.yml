@@ -5,7 +5,7 @@ on:
       max_urls:
         description: Maximum grid URLs to process
         required: false
-        default: "20"
+        default: "10"
   schedule:
     - cron: "30 20 * * *"
 concurrency:
@@ -25,7 +25,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          MAX_URLS: ${{ inputs.max_urls || '20' }}
+          MAX_URLS: ${{ inputs.max_urls || '10' }}
         run: python scripts/claim_urls.py
       - name: Check queue
         id: queue
@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p out
           docker pull gosom/google-maps-scraper:latest
-          docker run --rm -v "$PWD/queries.txt:/queries.txt:ro" -v "$PWD/out:/out" gosom/google-maps-scraper:latest -input /queries.txt -results /out/results.json -json -depth 1 -c 2 -exit-on-inactivity 3m
+          docker run --rm -v "$PWD/queries.txt:/queries.txt:ro" -v "$PWD/out:/out" gosom/google-maps-scraper:latest -input /queries.txt -results /out/results.json -json -depth 10 -c 4 -exit-on-inactivity 3m
           cp out/results.json results.json
       - name: Ingest
         if: steps.queue.outputs.has_batch == 'True'
