@@ -7,7 +7,6 @@ batch_id = json.load(open("claimed.json")).get("batch_id")
 if not batch_id:
     sys.exit(0)
 
-# gosom may write JSON Lines (one object per line) rather than one JSON array.
 raw = open("results.json", encoding="utf-8").read().strip()
 parse_errors = 0
 try:
@@ -60,8 +59,6 @@ for x in items:
         rejected += 1
         continue
 
-    # Gosom's actual website field is web_site.
-    # web_site takes precedence so a stale/different mapper field cannot win.
     website_raw = x.get("web_site")
     website = clean_website(
         website_raw
@@ -74,11 +71,6 @@ for x in items:
     if raw_longitude is None:
         raw_longitude = x.get("longtitude")
 
-    location = {
-        "lat": x.get("latitude"),
-        "lng": raw_longitude,
-    }
-
     valid.append({
         "placeId": pid,
         "title": x.get("title") or x.get("name"),
@@ -87,7 +79,7 @@ for x in items:
         "state": complete.get("state") if isinstance(complete, dict) else None,
         "countryCode": complete.get("country") if isinstance(complete, dict) else None,
         "postalCode": complete.get("postal_code") if isinstance(complete, dict) else None,
-        "location": location,
+        "location": {"lat": x.get("latitude"), "lng": raw_longitude},
         "website": website,
         "websiteFoundInRaw": website_raw is not None,
         "phone": x.get("phone") or x.get("phone_number"),
@@ -106,6 +98,17 @@ for x in items:
 
 unique_place_ids = {p["placeId"] for p in valid}
 duplicate_objects = max(0, len(valid) - len(unique_place_ids))
+
+existing_place_ids = set()
+for start in range(0, len(unique_place_ids), 100):
+    chunk = list(unique_place_ids)[start:start + 100]
+    if not chunk:
+        continue
+    response = sb.table("businesses").select("place_id").in_("place_id", chunk).execute()
+    existing_place_ids.update(row["place_id"] for row in (response.data or []))
+
+new_place_ids = unique_place_ids - existing_place_ids
+existing_in_batch = unique_place_ids & existing_place_ids
 
 errors = 0
 for p in valid:
@@ -126,6 +129,8 @@ stats = {
     "valid": len(valid),
     "rejected": rejected,
     "ingested": len(valid) - errors,
+    "records_inserted": len(new_place_ids),
+    "records_updated": len(existing_in_batch) if errors == 0 else max(0, len(existing_in_batch) - errors),
     "errors": errors,
     "network_responses": 0,
 }
