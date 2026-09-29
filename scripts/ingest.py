@@ -1,4 +1,5 @@
 import json, os, re, sys
+from urllib.parse import urlparse
 from supabase import create_client
 
 sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -29,6 +30,26 @@ raw_business_objects = len(items)
 valid = []
 rejected = 0
 
+def clean_website(value):
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        host = urlparse(value).netloc.lower().split(":")[0]
+    except Exception:
+        return None
+    bad_hosts = (
+        "google.com",
+        "googleusercontent.com",
+        "googleapis.com",
+        "gstatic.com",
+    )
+    if any(host == h or host.endswith("." + h) for h in bad_hosts):
+        return None
+    return value
+
 for x in items:
     if not isinstance(x, dict):
         rejected += 1
@@ -39,15 +60,23 @@ for x in items:
         rejected += 1
         continue
 
-    website = x.get("website") or x.get("website_url")
-    if isinstance(website, str) and website.startswith("https://www.google.com/"):
-        website = None
+    # Gosom's actual website field is web_site.
+    # web_site takes precedence so a stale/different mapper field cannot win.
+    website_raw = x.get("web_site")
+    website = clean_website(
+        website_raw
+        if website_raw is not None
+        else (x.get("website") or x.get("website_url"))
+    )
 
-    # Map gosom's schema to the payload expected by the Supabase RPC.
     complete = x.get("complete_address") or {}
+    raw_longitude = x.get("longitude")
+    if raw_longitude is None:
+        raw_longitude = x.get("longtitude")
+
     location = {
         "lat": x.get("latitude"),
-        "lng": x.get("longitude") if x.get("longitude") is not None else x.get("longtitude"),
+        "lng": raw_longitude,
     }
 
     valid.append({
@@ -60,6 +89,7 @@ for x in items:
         "postalCode": complete.get("postal_code") if isinstance(complete, dict) else None,
         "location": location,
         "website": website,
+        "websiteFoundInRaw": website_raw is not None,
         "phone": x.get("phone") or x.get("phone_number"),
         "phoneUnformatted": x.get("phone_unformatted") or x.get("phone"),
         "normalizedPhone": None,
@@ -80,7 +110,10 @@ duplicate_objects = max(0, len(valid) - len(unique_place_ids))
 errors = 0
 for p in valid:
     try:
-        sb.rpc("ingest_google_place", {"p_batch_id": batch_id, "p_payload": p}).execute()
+        sb.rpc("ingest_google_place", {
+            "p_batch_id": batch_id,
+            "p_payload": p
+        }).execute()
     except Exception as e:
         errors += 1
         print(f"INGEST ERROR {p['placeId']}: {e}")
@@ -94,9 +127,9 @@ stats = {
     "rejected": rejected,
     "ingested": len(valid) - errors,
     "errors": errors,
-    # Gosom's output does not expose the network-response count.
     "network_responses": 0,
 }
+
 json.dump(stats, open("ingest_stats.json", "w"), indent=2)
 print(json.dumps(stats))
 sys.exit(3 if errors else (2 if not valid else 0))
