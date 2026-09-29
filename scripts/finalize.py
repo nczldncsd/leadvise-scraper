@@ -27,13 +27,16 @@ duplicate_objects = int(stats.get("duplicate_objects", 0))
 extraction_errors = int(stats.get("extraction_errors", 0))
 network_responses = int(stats.get("network_responses", 0))
 ingested = int(stats.get("ingested", 0))
+inserted = int(stats.get("records_inserted", 0))
+updated = int(stats.get("records_updated", 0))
 rejected = int(stats.get("rejected", 0))
 errors = int(stats.get("errors", 0))
 
 batch_metrics = {
     "completed_at": now,
     "records_found": unique_businesses,
-    "records_inserted": ingested,
+    "records_inserted": inserted,
+    "records_updated": updated,
     "records_rejected": rejected,
     "network_responses": network_responses,
     "raw_business_objects": raw_business_objects,
@@ -76,4 +79,7 @@ sb.table("scrape_batches").update({
     "grid_urls_failed": 0,
 }).eq("id", batch).execute()
 
-print(f"Finalized batch {batch} | grids={len(rows)} | unique_businesses={unique_businesses}")
+print(
+    f"Finalized batch {batch} | grids={len(rows)} | "
+    f"unique={unique_businesses} | inserted={inserted} | updated={updated}"
+)
