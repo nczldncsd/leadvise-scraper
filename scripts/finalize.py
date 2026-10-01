@@ -10,7 +10,23 @@ if not batch:
     raise SystemExit(0)
 
 run_status = os.getenv("RUN_STATUS", "success")
-failed = run_status != "success"
+
+gosom_failed = False
+gosom_exit = 0
+gosom_timed_out = False
+if os.path.exists("gosom_status.json"):
+    try:
+        gosom = json.load(open("gosom_status.json"))
+        gosom_exit = int(gosom.get("exit_code", 0))
+        gosom_timed_out = bool(gosom.get("timed_out", False))
+        gosom_failed = gosom_exit != 0
+    except Exception:
+        gosom_failed = True
+else:
+    # Older/manual runs may not have this file.
+    gosom_failed = False
+
+failed = run_status != "success" or gosom_failed
 now = datetime.now(timezone.utc).isoformat()
 ids = [r["id"] for r in rows]
 
