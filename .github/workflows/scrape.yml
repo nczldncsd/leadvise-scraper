@@ -14,7 +14,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,27 +30,77 @@ jobs:
       - name: Check queue
         id: queue
         run: echo "has_batch=$(python -c 'import json; print(bool(json.load(open("claimed.json")).get("batch_id")))')" >> "$GITHUB_OUTPUT"
+
       - name: Run gosom
         if: steps.queue.outputs.has_batch == 'True'
         run: |
+          set +e
           mkdir -p out
           docker pull gosom/google-maps-scraper:latest
-          docker run --rm -v "$PWD/queries.txt:/queries.txt:ro" -v "$PWD/out:/out" gosom/google-maps-scraper:latest -input /queries.txt -results /out/results.json -json -depth 10 -c 4 -exit-on-inactivity 3m
-          cp out/results.json results.json
+
+          container_name="gosom-${GITHUB_RUN_ID}"
+          docker create             --name "$container_name"             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/results.json             -json             -depth 10             -c 4             -exit-on-inactivity 3m
+
+          docker start "$container_name" >/dev/null
+
+          docker logs -f "$container_name" &
+          logs_pid=$!
+
+          timeout --foreground --signal=TERM --kill-after=30s 20m             docker wait "$container_name" > gosom_container_exit.txt
+          wait_status=$?
+
+          kill "$logs_pid" 2>/dev/null || true
+          wait "$logs_pid" 2>/dev/null || true
+
+          timed_out=false
+          if [ "$wait_status" -eq 124 ]; then
+            timed_out=true
+            echo "Gosom hit the 20-minute process timeout. Stopping container."
+            docker stop -t 10 "$container_name" >/dev/null 2>&1 ||               docker kill "$container_name" >/dev/null 2>&1 || true
+            gosom_exit=124
+          elif [ -s gosom_container_exit.txt ]; then
+            gosom_exit=$(tr -d '\r\n' < gosom_container_exit.txt)
+          else
+            gosom_exit="$wait_status"
+          fi
+
+          if [ -s out/results.json ]; then
+            cp out/results.json results.json
+            echo "Scraper output found: $(wc -c < out/results.json) bytes"
+          else
+            echo "No scraper results.json was produced."
+          fi
+
+          docker rm -f "$container_name" >/dev/null 2>&1 || true
+
+          cat > gosom_status.json <<EOF
+          {
+            "exit_code": $gosom_exit,
+            "timed_out": $timed_out,
+            "result_file_present": $([ -s results.json ] && echo true || echo false)
+          }
+          EOF
+
+          echo "Gosom exit code: $gosom_exit | timed_out=$timed_out"
+          # Keep the workflow moving so partial results can still be ingested.
+          exit 0
+
       - name: Ingest
         if: steps.queue.outputs.has_batch == 'True'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/ingest.py
+
       - name: Finalize
         if: always() && steps.queue.outputs.has_batch == 'True'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RUN_STATUS: ${{ job.status }}
-          FAILURE_REASON: "GitHub Actions job failed. Check the failed step logs."
+          FAILURE_REASON: "Gosom timed out or failed, or another scraper step failed. Check gosom_status.json and step logs."
         run: python scripts/finalize.py
+
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,7 +108,10 @@ jobs:
           name: scraper-run
           path: |
             results.json
+            out/results.json
             ingest_stats.json
             claimed.json
+            gosom_status.json
+            gosom_container_exit.txt
           retention-days: 7
           if-no-files-found: ignore
