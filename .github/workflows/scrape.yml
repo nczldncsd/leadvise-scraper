@@ -6,8 +6,6 @@ on:
         description: Maximum grid URLs to process
         required: false
         default: "10"
-  schedule:
-    - cron: "30 20 * * *"
 concurrency:
   group: leadvise-scraper
   cancel-in-progress: false
