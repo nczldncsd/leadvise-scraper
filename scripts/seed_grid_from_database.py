@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Seed missing Google Maps grid URLs from data/target_locations.csv into Supabase.
 
-This is the headless GitHub Actions version of the local grid generator.
-It preserves the polygon mask, grid spacing, zoom, URL format, keyword rotation,
-and grid_queue fields. Existing URLs are never upserted or reset.
+Existing URLs are never upserted or reset. On full success, Pending locations are
+marked Seeded in the CSV; the workflow commits that state to prevent repeat geocoding.
 """
 import csv
 import math
@@ -30,15 +29,27 @@ KEYWORDS = [
 BATCH_SIZE = 100
 
 
-def load_locations(max_locations: int):
+def read_csv():
     with DATA_FILE.open(newline="", encoding="utf-8-sig") as handle:
-        rows = list(csv.DictReader(handle))
+        return list(csv.DictReader(handle))
+
+
+def load_locations(rows, max_locations: int):
     pending = [
         row for row in rows
         if (row.get("Status") or "").strip().casefold() == "pending"
         and row.get("location_name")
     ]
     return pending[:max_locations] if max_locations > 0 else pending
+
+
+def write_csv(rows):
+    if not rows:
+        return
+    with DATA_FILE.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def existing_urls(sb):
@@ -69,11 +80,13 @@ def main():
     ox.settings.use_cache = True
     ox.settings.log_console = False
 
-    locations = load_locations(max_locations)
+    source_rows = read_csv()
+    locations = load_locations(source_rows, max_locations)
     if not locations:
         print("No Pending locations found in data/target_locations.csv.")
         return
 
+    selected_names = {row["location_name"] for row in locations}
     print(f"Pending locations selected: {len(locations)}")
     existing = existing_urls(sb)
     print(f"Existing grid_queue URLs loaded: {len(existing)}")
@@ -143,12 +156,11 @@ def main():
             curr_lat += lat_step
 
         print(f"  Grid points: {location_generated}; new URLs queued: {location_new}")
-        # Respect public geocoder service limits.
         time.sleep(1.1)
 
     print(f"\nTotal new URLs: {len(pending_inserts)}")
     if dry_run:
-        print("DRY_RUN=true: no Supabase rows were written.")
+        print("DRY_RUN=true: no Supabase rows were written or locations marked Seeded.")
         return
 
     for offset in range(0, len(pending_inserts), BATCH_SIZE):
@@ -156,13 +168,19 @@ def main():
         sb.table("grid_queue").insert(chunk).execute()
         print(f"Inserted {min(offset + len(chunk), len(pending_inserts))}/{len(pending_inserts)}")
 
-    print(f"Seeding complete. Added {len(pending_inserts)} new URLs; existing rows were left unchanged.")
     if geocode_failures:
         print(f"Boundary lookup failures: {len(geocode_failures)}")
         for name, error in geocode_failures:
             print(f"  - {name}: {error}")
-        # Fail the action visibly so failures are not silently overlooked.
+        # Leave statuses as Pending; retrying is safe because existing URLs are skipped.
         sys.exit(2)
+
+    for row in source_rows:
+        if row.get("location_name") in selected_names and (row.get("Status") or "").strip().casefold() == "pending":
+            row["Status"] = "Seeded"
+    write_csv(source_rows)
+    print(f"Seeding complete. Added {len(pending_inserts)} new URLs; existing rows were left unchanged.")
+    print("Marked processed locations Seeded so the scheduled action will not repeat this work.")
 
 
 if __name__ == "__main__":
