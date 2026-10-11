@@ -20,7 +20,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://conomfadgsdjgewrwquq.supa
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "target_locations.csv"
 KEYWORDS = [
-    "Appliance Repair",
+    "Appliance Repair service",
     "Refrigerator Repair Service",
     "Washer & Dryer Repair Service",
     "Dishwasher Repair",
