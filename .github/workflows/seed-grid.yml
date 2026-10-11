@@ -9,7 +9,7 @@ on:
       max_locations:
         description: Maximum Pending locations to process (0 = all)
         required: false
-        default: "60"
+        default: "2"
 
 permissions:
   contents: write
@@ -33,7 +33,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          MAX_LOCATIONS: ${{ inputs.max_locations || '60' }}
+          MAX_LOCATIONS: ${{ inputs.max_locations || '2' }}
         run: python scripts/seed_grid_from_database.py
       - name: Commit seeded location statuses
         if: success()
