@@ -1,5 +1,8 @@
 name: LeadVise Google Maps Scraper
 on:
+  schedule:
+    - cron: '0 6,19 * * *'
+      timezone: 'Asia/Kolkata'
   workflow_dispatch:
     inputs:
       max_urls:
