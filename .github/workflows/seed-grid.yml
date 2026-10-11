@@ -1,0 +1,49 @@
+name: Seed LeadVise Grid Queue
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+      timezone: 'Asia/Kolkata'
+  workflow_dispatch:
+    inputs:
+      max_locations:
+        description: Maximum Pending locations to process (0 = all)
+        required: false
+        default: "60"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: leadvise-grid-seeder
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install seeder dependencies
+        run: pip install "supabase>=2.0.0,<3.0.0" osmnx shapely
+      - name: Seed missing grid URLs into Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MAX_LOCATIONS: ${{ inputs.max_locations || '60' }}
+        run: python scripts/seed_grid_from_database.py
+      - name: Commit seeded location statuses
+        if: success()
+        run: |
+          if git diff --quiet -- data/target_locations.csv; then
+            echo "No location status changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/target_locations.csv
+          git commit -m "Mark grid locations seeded"
+          git push
