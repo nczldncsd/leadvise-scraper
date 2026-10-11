@@ -1,9 +1,6 @@
 name: Seed LeadVise Grid Queue
 
 on:
-  schedule:
-    - cron: '0 5 * * *'
-      timezone: 'Asia/Kolkata'
   workflow_dispatch:
     inputs:
       max_locations:
