@@ -1,6 +1,6 @@
 Status,State,location_name,target_level,step_meters,zoom
-Pending,FL,"Miami, Florida, USA",City,2500,14.0z
-Pending,FL,"Hialeah, Florida, USA",City,3000,13.5z
+Seeded,FL,"Miami, Florida, USA",City,2500,14.0z
+Seeded,FL,"Hialeah, Florida, USA",City,3000,13.5z
 Pending,FL,"Fort Lauderdale, Florida, USA",City,3000,13.5z
 Pending,FL,"Pembroke Pines, Florida, USA",City,4000,13.0z
 Pending,FL,"Boca Raton, Florida, USA",City,4000,13.0z
@@ -10,23 +10,23 @@ Pending,FL,"Hillsborough County, Florida, USA",County,5000,13.0z
 Pending,FL,"Orlando, Florida, USA",City,3500,13.5z
 Pending,FL,"Seminole County, Florida, USA",County,5000,13.0z
 Pending,FL,"Polk County, Florida, USA",County,7000,12.0z
-Pending,FL,"Duval County, Florida, USA","County (Jacksonville)",5500,12.5z
+Pending,FL,"Duval County, Florida, USA",County (Jacksonville),5500,12.5z
 Pending,FL,"Brevard County, Florida, USA",County,6000,12.5z
 Pending,FL,"Lee County, Florida, USA",County,5500,12.5z
 Pending,FL,"Escambia County, Florida, USA",County,6000,12.5z
 Pending,FL,"Pasco County, Florida, USA",County,5500,12.5z
 Pending,FL,"Sarasota County, Florida, USA",County,5000,13.0z
 Pending,FL,"Manatee County, Florida, USA",County,5500,12.5z
-Pending,FL,"Collier County, Florida, USA","County (Naples)",5000,13.0z
-Pending,FL,"Osceola County, Florida, USA","County (Kissimmee)",5500,12.5z
-Pending,FL,"Volusia County, Florida, USA","County (Daytona)",6000,12.5z
+Pending,FL,"Collier County, Florida, USA",County (Naples),5000,13.0z
+Pending,FL,"Osceola County, Florida, USA",County (Kissimmee),5500,12.5z
+Pending,FL,"Volusia County, Florida, USA",County (Daytona),6000,12.5z
 Pending,FL,"St. Johns County, Florida, USA",County,5500,12.5z
 Pending,FL,"Clay County, Florida, USA",County,5500,12.5z
-Pending,FL,"Marion County, Florida, USA","County (Ocala)",6500,12.0z
+Pending,FL,"Marion County, Florida, USA",County (Ocala),6500,12.0z
 Pending,FL,"Lake County, Florida, USA",County,6000,12.5z
-Pending,FL,"Leon County, Florida, USA","County (Tallahassee)",5000,13.0z
-Pending,FL,"Okaloosa County, Florida, USA","County (Destin/FWB)",5500,12.5z
-Pending,FL,"Bay County, Florida, USA","County (Panama City)",6000,12.5z
+Pending,FL,"Leon County, Florida, USA",County (Tallahassee),5000,13.0z
+Pending,FL,"Okaloosa County, Florida, USA",County (Destin/FWB),5500,12.5z
+Pending,FL,"Bay County, Florida, USA",County (Panama City),6000,12.5z
 Completed,TX,"Houston, Texas, USA",City,3000,13.5z
 Pending,TX,"Katy, Texas, USA",City,5000,13.0z
 Pending,TX,"Sugar Land, Texas, USA",City,4000,13.0z
@@ -52,10 +52,10 @@ Pending,TX,"Galveston County, Texas, USA",County,5500,12.5z
 Pending,TX,"Williamson County, Texas, USA",County,5500,12.5z
 Pending,TX,"Hays County, Texas, USA",County,6000,12.5z
 Pending,TX,"Comal County, Texas, USA",County,6000,12.5z
-Pending,TX,"Nueces County, Texas, USA","County (Corpus Christi)",5500,12.5z
-Pending,TX,"Cameron County, Texas, USA","County (Brownsville)",6000,12.5z
+Pending,TX,"Nueces County, Texas, USA",County (Corpus Christi),5500,12.5z
+Pending,TX,"Cameron County, Texas, USA",County (Brownsville),6000,12.5z
 Pending,TX,"Lubbock County, Texas, USA",County,5500,12.5z
-Pending,TX,"McLennan County, Texas, USA","County (Waco)",6000,12.5z
-Pending,TX,"Smith County, Texas, USA","County (Tyler)",6000,12.5z
-Pending,TX,"Bell County, Texas, USA","County (Killeen/Temple)",6000,12.5z
-Pending,TX,"Potter County, Texas, USA","County (Amarillo)",6000,12.5z
+Pending,TX,"McLennan County, Texas, USA",County (Waco),6000,12.5z
+Pending,TX,"Smith County, Texas, USA",County (Tyler),6000,12.5z
+Pending,TX,"Bell County, Texas, USA",County (Killeen/Temple),6000,12.5z
+Pending,TX,"Potter County, Texas, USA",County (Amarillo),6000,12.5z
