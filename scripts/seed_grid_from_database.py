@@ -23,8 +23,7 @@ KEYWORDS = [
     "Appliance Repair service",
     "Refrigerator Repair Service",
     "Washer & Dryer Repair Service",
-    "Dishwasher Repair",
-    "Oven and Stove Repair",
+    "Dishwasher Repair Service",
 ]
 BATCH_SIZE = 100
 
