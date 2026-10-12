@@ -1,11 +1,11 @@
 Status,State,location_name,target_level,step_meters,zoom
 Seeded,FL,"Miami, Florida, USA",City,2500,14.0z
 Seeded,FL,"Hialeah, Florida, USA",City,3000,13.5z
-Pending,FL,"Fort Lauderdale, Florida, USA",City,3000,13.5z
-Pending,FL,"Pembroke Pines, Florida, USA",City,3000,13.0z
-Pending,FL,"Boca Raton, Florida, USA",City,3000,13.0z
-Pending,FL,"West Palm Beach, Florida, USA",City,3500,13.5z
-Pending,FL,"Pinellas County, Florida, USA",County,3000,13.0z
+Seeded,FL,"Fort Lauderdale, Florida, USA",City,3000,13.5z
+Seeded,FL,"Pembroke Pines, Florida, USA",City,3000,13.0z
+Seeded,FL,"Boca Raton, Florida, USA",City,3000,13.0z
+Seeded,FL,"West Palm Beach, Florida, USA",City,3500,13.5z
+Seeded,FL,"Pinellas County, Florida, USA",County,3000,13.0z
 Pending,FL,"Hillsborough County, Florida, USA",County,3000,13.0z
 Pending,FL,"Orlando, Florida, USA",City,3500,13.5z
 Pending,FL,"Seminole County, Florida, USA",County,3000,13.0z
