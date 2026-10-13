@@ -1,14 +1,14 @@
 name: LeadVise Google Maps Scraper
 on:
-  schedule:
-    # 06:00 and 19:00 Asia/Kolkata (GitHub Actions cron is UTC)
-    - cron: '30 0,13 * * *'
   workflow_dispatch:
     inputs:
       max_urls:
         description: Maximum grid URLs to process
         required: false
         default: "10"
+  schedule:
+       - cron: '34 11 * * *'
+       - cron: '34 14 * * *'
 concurrency:
   group: leadvise-scraper
   cancel-in-progress: false
