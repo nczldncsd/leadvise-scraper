@@ -8,7 +8,7 @@ now = datetime.now(timezone.utc)
 cutoff = (now - timedelta(hours=2)).isoformat()
 
 sb.table("grid_queue").update({"status":"pending","scrape_batch_id":None,"last_error":"Recovered stale processing claim"}).eq("status","processing").lt("last_heartbeat_at",cutoff).execute()
-rows = sb.table("grid_queue").select("id,url,keyword,location_name,target_level,state,latitude,longitude").eq("status","pending").order("created_at").limit(max_urls).execute().data or []
+rows = sb.table("grid_queue").select("id,url,keyword,location_name,target_level,state,latitude,longitude").eq("status","pending").order("last_error_at", desc=False, nullsfirst=True).order("created_at", desc=False).limit(max_urls).execute().data or []
 if not rows:
     open("queries.txt","w").write("")
     json.dump({"batch_id":None,"rows":[]},open("claimed.json","w"),indent=2)
