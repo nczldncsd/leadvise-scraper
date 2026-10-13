@@ -164,7 +164,7 @@ sb.table("scrape_batches").update({
     "grid_urls_completed": len(rows) if fully_completed else 0,
     # Per-URL failures are not measured by the current Gosom output, so do not
     # falsely report every claimed URL as failed on a batch-level timeout.
-    "grid_urls_failed": 0 if not fully_completed else 0,
+    "grid_urls_failed": 0,
 }).eq("id", batch).execute()
 
 print(
