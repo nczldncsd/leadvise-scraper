@@ -47,7 +47,7 @@ jobs:
           docker logs -f "$container_name" &
           logs_pid=$!
 
-          timeout --foreground --signal=TERM --kill-after=30s 20m             docker wait "$container_name" > gosom_container_exit.txt
+          timeout --foreground --signal=TERM --kill-after=30s 30m             docker wait "$container_name" > gosom_container_exit.txt
           wait_status=$?
 
           kill "$logs_pid" 2>/dev/null || true
@@ -56,7 +56,7 @@ jobs:
           timed_out=false
           if [ "$wait_status" -eq 124 ]; then
             timed_out=true
-            echo "Gosom hit the 20-minute process timeout. Stopping container."
+            echo "Gosom hit the 30-minute process timeout. Stopping container."
             docker stop -t 10 "$container_name" >/dev/null 2>&1 ||               docker kill "$container_name" >/dev/null 2>&1 || true
             gosom_exit=124
           elif [ -s gosom_container_exit.txt ]; then
