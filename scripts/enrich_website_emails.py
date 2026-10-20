@@ -18,12 +18,20 @@ MAX_PAGES_PER_DOMAIN = max(1, int(os.getenv("MAX_PAGES_PER_DOMAIN", "8")))
 RETRY_NOT_FOUND = os.getenv("RETRY_NOT_FOUND", "false").lower() == "true"
 STALE_PROCESSING_HOURS = 3
 
+# Conservative pattern for public business email discovery. Excludes URL paths,
+# package versions (e.g. library@1.2.3), and other strings that merely contain @.
 EMAIL_RE = re.compile(
-    r"(?i)(?<![\w.+-])([a-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+    r"(?i)(?<![a-z0-9._%+/-])"
+    r"([a-z0-9_%+-]+(?:\\.[a-z0-9_%+-]+)*@"
     r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
-    r"(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+)"
+    r"(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*"
+    r"\\.[a-z]{2,})"
+    r"(?![a-z0-9-])"
 )
-INVALID_EXAMPLES = {"example@example.com", "name@example.com", "email@example.com"}
+INVALID_EXAMPLES = {
+    "example@example.com", "name@example.com", "email@example.com",
+    "user@email.com", "user@website.com", "test@test.com",
+}
 PRIORITY_WORDS = ("contact", "about", "team", "service", "location", "quote", "estimate", "support", "get-in-touch")
 
 
@@ -72,6 +80,11 @@ def clean_email(value):
     if not local or not domain or "." not in domain:
         return None
     if domain.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")):
+        return None
+    if email in INVALID_EXAMPLES:
+        return None
+    tld = domain.rsplit(".", 1)[-1]
+    if not tld.isalpha() or len(tld) < 2:
         return None
     return email
 
