@@ -13,6 +13,11 @@ on:
         required: true
         default: false
         type: boolean
+      retry_failed:
+        description: Retry domains that previously failed to load (normally skipped)
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: leadvise-website-email-extraction
@@ -41,6 +46,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MAX_DOMAINS: ${{ inputs.max_domains }}
           RETRY_NOT_FOUND: ${{ inputs.retry_not_found }}
+          RETRY_FAILED: ${{ inputs.retry_failed }}
           MAX_PAGES_PER_DOMAIN: "8"
         run: python scripts/enrich_website_emails.py
 
