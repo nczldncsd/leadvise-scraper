@@ -109,7 +109,9 @@ class WebsiteEmailSpider(Spider):
             unique=True,
         )
 
-    def start_requests(self):
+    async def start(self):
+        # Scrapy 2.13+ uses start() for initial requests. The dependency range
+        # allows newer Scrapy versions where start_requests() is no longer called.
         for site in self.sites:
             yield Request(
                 site["website"],
