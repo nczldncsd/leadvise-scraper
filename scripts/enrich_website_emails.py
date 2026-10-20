@@ -16,6 +16,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 MAX_DOMAINS = max(1, int(os.getenv("MAX_DOMAINS", "50")))
 MAX_PAGES_PER_DOMAIN = max(1, int(os.getenv("MAX_PAGES_PER_DOMAIN", "8")))
 RETRY_NOT_FOUND = os.getenv("RETRY_NOT_FOUND", "false").lower() == "true"
+RETRY_FAILED = os.getenv("RETRY_FAILED", "false").lower() == "true"
 STALE_PROCESSING_HOURS = 3
 
 # Conservative pattern for public business email discovery. Excludes URL paths,
@@ -257,13 +258,15 @@ def load_tracking_rows(sb, domains):
     return tracking
 
 
-def should_process(row, retry_not_found):
+def should_process(row, retry_not_found, retry_failed):
     if not row:
         return True
     status = row.get("status")
     if status == "found":
         return False
     if status == "not_found" and not retry_not_found:
+        return False
+    if status == "failed" and not retry_failed:
         return False
     if status == "processing":
         attempted = row.get("last_attempt_at")
@@ -273,7 +276,8 @@ def should_process(row, retry_not_found):
                 return False
         except (ValueError, AttributeError):
             pass
-    # Failed and stale processing rows can be retried automatically.
+    # Failed domains are skipped unless retry_failed is explicitly enabled.
+    # Stale processing rows remain eligible so interrupted runs can recover.
     return True
 
 
@@ -320,7 +324,7 @@ def main():
     tracking = load_tracking_rows(sb, domains)
 
     eligible = []
-    skipped_found = skipped_not_found = skipped_processing = 0
+    skipped_found = skipped_not_found = skipped_failed = skipped_processing = 0
     synced_from_existing = 0
     for domain, site in grouped.items():
         row = tracking.get(domain)
@@ -333,12 +337,14 @@ def main():
             if saved_emails:
                 update_business_emails(sb, site, saved_emails)
                 synced_from_existing += len(site["businesses"])
-        if not should_process(row, RETRY_NOT_FOUND):
+        if not should_process(row, RETRY_NOT_FOUND, RETRY_FAILED):
             status = (row or {}).get("status")
             if status == "found":
                 skipped_found += 1
             elif status == "not_found":
                 skipped_not_found += 1
+            elif status == "failed":
+                skipped_failed += 1
             else:
                 skipped_processing += 1
             continue
@@ -349,7 +355,8 @@ def main():
         f"Absolute-qualified businesses grouped by domain: {len(grouped)} | "
         f"eligible domains: {len(eligible)} | limit: {MAX_DOMAINS} | "
         f"skipped found: {skipped_found} | synced from saved domain results: {synced_from_existing} | "
-        f"skipped no-email: {skipped_not_found} | skipped active processing: {skipped_processing}"
+        f"skipped no-email: {skipped_not_found} | skipped failed: {skipped_failed} | "
+        f"skipped active processing: {skipped_processing}"
     )
 
     if not eligible:
