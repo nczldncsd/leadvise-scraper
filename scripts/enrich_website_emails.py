@@ -306,8 +306,18 @@ def main():
 
     eligible = []
     skipped_found = skipped_not_found = skipped_processing = 0
+    synced_from_existing = 0
     for domain, site in grouped.items():
         row = tracking.get(domain)
+        if (row or {}).get("status") == "found":
+            # Reuse a prior domain result for newly added businesses without recrawling.
+            saved_emails = sorted({
+                email for raw in ((row or {}).get("emails") or [])
+                if (email := clean_email(str(raw)))
+            })
+            if saved_emails:
+                update_business_emails(sb, site, saved_emails)
+                synced_from_existing += len(site["businesses"])
         if not should_process(row, RETRY_NOT_FOUND):
             status = (row or {}).get("status")
             if status == "found":
@@ -323,8 +333,8 @@ def main():
     print(
         f"Absolute-qualified businesses grouped by domain: {len(grouped)} | "
         f"eligible domains: {len(eligible)} | limit: {MAX_DOMAINS} | "
-        f"skipped found: {skipped_found} | skipped no-email: {skipped_not_found} | "
-        f"skipped active processing: {skipped_processing}"
+        f"skipped found: {skipped_found} | synced from saved domain results: {synced_from_existing} | "
+        f"skipped no-email: {skipped_not_found} | skipped active processing: {skipped_processing}"
     )
 
     if not eligible:
