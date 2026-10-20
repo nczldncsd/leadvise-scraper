@@ -1,0 +1,56 @@
+name: LeadVise Website Email Extraction
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_domains:
+        description: Maximum unique website domains to process
+        required: true
+        default: "50"
+        type: string
+      retry_not_found:
+        description: Recheck domains previously crawled with no email found
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: leadvise-website-email-extraction
+  cancel-in-progress: false
+
+jobs:
+  extract-emails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Extract emails from qualified websites
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MAX_DOMAINS: ${{ inputs.max_domains }}
+          RETRY_NOT_FOUND: ${{ inputs.retry_not_found }}
+          MAX_PAGES_PER_DOMAIN: "8"
+        run: python scripts/enrich_website_emails.py
+
+      - name: Upload extraction report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-email-extraction-report
+          path: |
+            email_crawl_results.json
+            email_extraction_summary.json
+          retention-days: 14
+          if-no-files-found: ignore
