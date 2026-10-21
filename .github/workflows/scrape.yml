@@ -30,7 +30,7 @@ jobs:
         run: python scripts/claim_urls.py
       - name: Check queue
         id: queue
-        run: echo "has_batch=$(python -c 'import json; print(bool(json.load(open("claimed.json")).get("batch_id")))' )" >> "$GITHUB_OUTPUT"
+        run: echo "has_batch=$(python -c 'import json; print(bool(json.load(open("claimed.json")).get("batch_id")))')" >> "$GITHUB_OUTPUT"
 
       - name: Run gosom
         if: steps.queue.outputs.has_batch == 'True'
