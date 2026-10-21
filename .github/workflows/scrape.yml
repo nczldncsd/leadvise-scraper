@@ -38,6 +38,8 @@ jobs:
           set +e
           mkdir -p out
           docker pull gosom/google-maps-scraper:latest
+          # Diagnostic only: record the exact image used without changing scraper behavior.
+          docker image inspect gosom/google-maps-scraper:latest --format 'Gosom image ID: {{.Id}} | RepoDigests: {{json .RepoDigests}}'
 
           container_name="gosom-${GITHUB_RUN_ID}"
           docker create             --name "$container_name"             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/results.json             -json             -depth 10             -c 4             -exit-on-inactivity 3m
