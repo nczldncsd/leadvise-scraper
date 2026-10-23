@@ -42,24 +42,64 @@ jobs:
           docker image inspect gosom/google-maps-scraper:latest --format 'Gosom image ID: {{.Id}} | RepoDigests: {{json .RepoDigests}}'
 
           container_name="gosom-${GITHUB_RUN_ID}"
-          docker create             --name "$container_name"             -v "$PWD/queries.txt:/queries.txt:ro"             -v "$PWD/out:/out"             gosom/google-maps-scraper:latest             -input /queries.txt             -results /out/results.json             -json             -depth 10             -c 4             -exit-on-inactivity 3m
+          docker create \
+            --name "$container_name" \
+            -v "$PWD/queries.txt:/queries.txt:ro" \
+            -v "$PWD/out:/out" \
+            gosom/google-maps-scraper:latest \
+            -input /queries.txt \
+            -results /out/results.json \
+            -json \
+            -depth 10 \
+            -c 4 \
+            -exit-on-inactivity 3m
 
           docker start "$container_name" >/dev/null
 
-          docker logs -f "$container_name" &
+          # Capture logs to a file so the shutdown watchdog can detect the
+          # Scrapemate completion marker without depending on console output.
+          docker logs -f "$container_name" > gosom_container.log 2>&1 &
           logs_pid=$!
 
-          timeout --foreground --signal=TERM --kill-after=30s 30m             docker wait "$container_name" > gosom_container_exit.txt
+          # Scrapemate has occasionally logged that it exited while the
+          # container's main process remained alive. Give normal shutdown
+          # 60 seconds, then stop the container so partial results can ingest.
+          (
+            while docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null | grep -q '^true$'; do
+              if grep -Fq 'scrapemate exited' gosom_container.log 2>/dev/null; then
+                echo "Scrapemate exit marker detected; allowing 60 seconds for normal container shutdown."
+                sleep 60
+                if docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null | grep -q '^true$'; then
+                  echo "Shutdown watchdog: container still running after 60-second grace period; stopping it."
+                  touch gosom_shutdown_watchdog_triggered
+                  docker stop -t 10 "$container_name" >/dev/null 2>&1 || docker kill "$container_name" >/dev/null 2>&1 || true
+                fi
+                exit 0
+              fi
+              sleep 5
+            done
+          ) &
+          watchdog_pid=$!
+
+          timeout --foreground --signal=TERM --kill-after=30s 30m \
+            docker wait "$container_name" > gosom_container_exit.txt
           wait_status=$?
 
+          kill "$watchdog_pid" 2>/dev/null || true
+          wait "$watchdog_pid" 2>/dev/null || true
           kill "$logs_pid" 2>/dev/null || true
           wait "$logs_pid" 2>/dev/null || true
 
           timed_out=false
-          if [ "$wait_status" -eq 124 ]; then
+          if [ -f gosom_shutdown_watchdog_triggered ]; then
+            timed_out=true
+            echo "Gosom shutdown watchdog stopped a container that stayed alive after Scrapemate exited."
+            gosom_exit=124
+          elif [ "$wait_status" -eq 124 ]; then
             timed_out=true
             echo "Gosom hit the 30-minute process timeout. Stopping container."
-            docker stop -t 10 "$container_name" >/dev/null 2>&1 ||               docker kill "$container_name" >/dev/null 2>&1 || true
+            docker stop -t 10 "$container_name" >/dev/null 2>&1 || \
+              docker kill "$container_name" >/dev/null 2>&1 || true
             gosom_exit=124
           elif [ -s gosom_container_exit.txt ]; then
             gosom_exit=$(tr -d '\r\n' < gosom_container_exit.txt)
@@ -80,11 +120,12 @@ jobs:
           {
             "exit_code": $gosom_exit,
             "timed_out": $timed_out,
+            "shutdown_watchdog_triggered": $([ -f gosom_shutdown_watchdog_triggered ] && echo true || echo false),
             "result_file_present": $([ -s results.json ] && echo true || echo false)
           }
           EOF
 
-          echo "Gosom exit code: $gosom_exit | timed_out=$timed_out"
+          echo "Gosom exit code: $gosom_exit | timed_out=$timed_out | shutdown_watchdog_triggered=$([ -f gosom_shutdown_watchdog_triggered ] && echo true || echo false)"
           # Keep the workflow moving so partial results can still be ingested.
           exit 0
 
@@ -116,5 +157,6 @@ jobs:
             claimed.json
             gosom_status.json
             gosom_container_exit.txt
+            gosom_container.log
           retention-days: 7
           if-no-files-found: ignore
