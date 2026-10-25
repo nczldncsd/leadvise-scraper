@@ -1,6 +1,9 @@
 name: LeadVise Website Email Extraction
 
 on:
+  schedule:
+    - cron: '17 9 * * *'
+    - cron: '17 15 * * *'
   workflow_dispatch:
     inputs:
       max_domains:
@@ -44,9 +47,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          MAX_DOMAINS: ${{ inputs.max_domains }}
-          RETRY_NOT_FOUND: ${{ inputs.retry_not_found }}
-          RETRY_FAILED: ${{ inputs.retry_failed }}
+          MAX_DOMAINS: ${{ inputs.max_domains || '50' }}
+          RETRY_NOT_FOUND: ${{ inputs.retry_not_found || 'false' }}
+          RETRY_FAILED: ${{ inputs.retry_failed || 'false' }}
           MAX_PAGES_PER_DOMAIN: "8"
         run: python scripts/enrich_website_emails.py
 
