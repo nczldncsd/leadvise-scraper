@@ -7,11 +7,11 @@ Seeded,FL,"Pembroke Pines, Florida, USA",City,3000,13.0z
 Seeded,FL,"Boca Raton, Florida, USA",City,3000,13.0z
 Seeded,FL,"West Palm Beach, Florida, USA",City,3500,13.5z
 Seeded,FL,"Pinellas County, Florida, USA",County,3000,13.0z
-Pending,FL,"Hillsborough County, Florida, USA",County,5000,13.0z
-Pending,FL,"Orlando, Florida, USA",City,3500,13.5z
-Pending,FL,"Seminole County, Florida, USA",County,5000,13.0z
-Pending,FL,"Polk County, Florida, USA",County,7000,12.0z
-Pending,FL,"Duval County, Florida, USA",County (Jacksonville),5500,12.5z
+Seeded,FL,"Hillsborough County, Florida, USA",County,5000,13.0z
+Seeded,FL,"Orlando, Florida, USA",City,3500,13.5z
+Seeded,FL,"Seminole County, Florida, USA",County,5000,13.0z
+Seeded,FL,"Polk County, Florida, USA",County,7000,12.0z
+Seeded,FL,"Duval County, Florida, USA",County (Jacksonville),5500,12.5z
 Pending,FL,"Brevard County, Florida, USA",County,6000,12.5z
 Pending,FL,"Lee County, Florida, USA",County,5500,12.5z
 Pending,FL,"Escambia County, Florida, USA",County,6000,12.5z
