@@ -13,6 +13,7 @@ run_status = os.getenv("RUN_STATUS", "success")
 gosom_exit = 0
 gosom_timed_out = False
 gosom_status_present = os.path.exists("gosom_status.json")
+gosom_scrape_completed = False
 gosom_failed = False
 
 if gosom_status_present:
@@ -20,7 +21,13 @@ if gosom_status_present:
         gosom = json.load(open("gosom_status.json"))
         gosom_exit = int(gosom.get("exit_code", 0))
         gosom_timed_out = bool(gosom.get("timed_out", False))
-        gosom_failed = gosom_exit != 0 or gosom_timed_out
+        # Prefer verified scrape completion over the container exit code.
+        # The watchdog can kill a container after Scrapemate has completed all
+        # requested URLs, so a forced cleanup alone must not make a good batch partial.
+        gosom_scrape_completed = bool(
+            gosom.get("scrape_completed", gosom_exit == 0 and not gosom_timed_out)
+        )
+        gosom_failed = not gosom_scrape_completed
     except (OSError, ValueError, TypeError):
         gosom_failed = True
 else:
@@ -67,9 +74,9 @@ batch_metrics = {
     "ingestion_errors": errors,
 }
 
-# A batch is complete only when the scraper exited normally and ingestion
-# produced valid statistics without errors. A timeout is not proof that every
-# URL failed, and a result file is not proof that every URL finished.
+# A batch is complete only when scrape completion is verified and ingestion
+# produced valid statistics without errors. A container shutdown timeout alone
+# is not a scrape failure when the verifier confirms every requested URL finished.
 fully_completed = (
     run_status == "success"
     and gosom_status_present
