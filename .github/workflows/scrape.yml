@@ -129,6 +129,10 @@ jobs:
           # Keep the workflow moving so partial results can still be ingested.
           exit 0
 
+      - name: Verify Gosom completion
+        if: steps.queue.outputs.has_batch == 'True'
+        run: python scripts/verify_gosom_completion.py
+
       - name: Ingest
         if: steps.queue.outputs.has_batch == 'True'
         env:
