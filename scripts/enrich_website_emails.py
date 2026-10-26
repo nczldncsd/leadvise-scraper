@@ -23,10 +23,10 @@ STALE_PROCESSING_HOURS = 3
 # package versions (e.g. library@1.2.3), and other strings that merely contain @.
 EMAIL_RE = re.compile(
     r"(?i)(?<![a-z0-9._%+/-])"
-    r"([a-z0-9_%+-]+(?:\\.[a-z0-9_%+-]+)*@"
+    r"([a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@"
     r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
-    r"(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*"
-    r"\\.[a-z]{2,})"
+    r"(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*"
+    r"\.[a-z]{2,})"
     r"(?![a-z0-9-])"
 )
 INVALID_EXAMPLES = {
