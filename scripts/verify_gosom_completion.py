@@ -20,7 +20,7 @@ def main():
     lines = log.splitlines()
     successful_search_jobs = [
         line for line in lines
-        if '"status":"success"' in line and "https://www.google.com/maps/search/" in line
+        if re.search(r'"status"\\s*:\\s*"success"', line) and "https://www.google.com/maps/search/" in line
     ]
     failed_jobs = [
         line for line in lines
